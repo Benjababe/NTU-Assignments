@@ -1,0 +1,7 @@
+Class: Student, Book, Color, Person, Transformer, Liquid
+
+Object:	NTU, MichaelJackson, Person1, Engine
+
+Attribute: Age, Color, Result, Force
+
+Behaviour: Work, Shoot
