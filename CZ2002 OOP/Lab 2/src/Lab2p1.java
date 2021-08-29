@@ -70,7 +70,7 @@ public class Lab2p1 {
     public static int divide(int m, int n) {
         int quotient = 0;
 
-        while (m > n) {
+        while (m >= n) {
             m -= n;
             quotient++;
         }
@@ -79,7 +79,7 @@ public class Lab2p1 {
     }
 
     public static int modulus(int m, int n) {
-        while (m > n) {
+        while (m >= n) {
             m -= n;
         }
         return m;
