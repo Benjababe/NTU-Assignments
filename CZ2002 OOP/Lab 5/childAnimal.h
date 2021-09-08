@@ -1,56 +1,36 @@
 #include <string>
-#include <iostream>
+#include "animalClass.h"
 
 using namespace std;
 
-namespace Zoo
+#ifndef C_CLASS
+#define C_CLASS
+
+class Dog : public Mammal
 {
-    class Dog : public Mammal
-    {
-    public:
-        Dog(string n, Zoo::COLOR c, string o) : Mammal(n, c)
-        {
-            _owner = o;
-            cout << "Owner of " << _name << " is " << _owner << endl;
-        }
-        void speak()
-        {
-            cout << _name << " the dog woofs" << endl;
-        }
-        void move() override
-        {
-            cout << _name << " the dog moved" << endl;
-        }
+public:
+    Dog(string n, COLOR c, string o);
+    void speak();
+    void move() override;
 
-    protected:
-        string _owner;
-    };
+protected:
+    string _owner;
+};
 
-    class Cat : public Mammal
-    {
-    public:
-        Cat(string n, Zoo::COLOR c) : Mammal(n, c) {}
-        void move()
-        {
-            cout << _name << " the cat moves" << endl;
-        }
-        void speak()
-        {
-            cout << _name << " the cat meows" << endl;
-        }
-    };
+class Cat : public Mammal
+{
+public:
+    Cat(string n, COLOR c);
+    void move();
+    void speak();
+};
 
-    class Lion : public Mammal
-    {
-    public:
-        Lion(string n, Zoo::COLOR c) : Mammal(n, c) {}
-        void move()
-        {
-            cout << _name << " the lion moves" << endl;
-        }
-        void speak()
-        {
-            cout << _name << " the lion roars" << endl;
-        }
-    };
-}
+class Lion : public Mammal
+{
+public:
+    Lion(string n, COLOR c);
+    void move();
+    void speak();
+};
+
+#endif //C_CLASS

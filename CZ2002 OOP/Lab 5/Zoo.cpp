@@ -1,20 +1,19 @@
 #include <iostream>
 #include <string>
 
-#include "animal.h"
+#include "animalClass.h"
 #include "childAnimal.h"
 
-using namespace Zoo;
 using namespace std;
 
 int main()
 {
-    Zoo::Mammal zoo[20];
+    Mammal zoo[10];
 
     int input = -1, zooCount = 0;
 
     string name, owner = "Jerry";
-    Zoo::COLOR col = Zoo::Brown;
+    COLOR col = Brown;
 
     while (input != 0 && input != 5)
     {
@@ -33,15 +32,15 @@ int main()
         switch (input)
         {
         case 1:
-            zoo[zooCount++] = Zoo::Dog(name, col, owner);
+            zoo[zooCount++] = Dog(name, col, owner);
             break;
 
         case 2:
-            zoo[zooCount++] = Zoo::Cat(name, col);
+            zoo[zooCount++] = Cat(name, col);
             break;
 
         case 3:
-            zoo[zooCount++] = Zoo::Lion(name, col);
+            zoo[zooCount++] = Lion(name, col);
             break;
 
         case 4:
