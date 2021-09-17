@@ -1,6 +1,6 @@
 # CZ2005 Lab 2
 
-Files required to be updated are as follows
+Files required to be edited:
 
 * nachos-exp1-2/machine/interrupt.h
 * nachos-exp1-2/machine/interrupt.cc

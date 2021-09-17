@@ -56,8 +56,13 @@ public class Shape3DApp {
             // consider overlapping shapes as well
             // subtract from both current and previous shapes as that
             // area is now not included
-            if (i > 0)
-                totalArea -= 2 * shapes[i].getBottomArea();
+            if (i > 0) {
+                // get smaller area of previous shape's top or current shape's bottom
+                // we do this because previous shape might be pyramid/sphere with top area of 0
+                // in that case, there isn't any overlap
+                double area = Math.min(shapes[i - 1].getTopArea(), shapes[i].getBottomArea());
+                totalArea -= 2 * area;
+            }
         }
 
         System.out.format("Total area of shapes is %.2f\n", totalArea);
