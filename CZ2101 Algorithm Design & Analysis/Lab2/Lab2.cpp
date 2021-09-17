@@ -16,11 +16,13 @@
 
 using namespace std;
 
+// returns current time in microseconds
 uint64_t timeNow()
 {
     return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
+// returns random number in range [min, max]
 int random(int min, int max)
 {
     static bool first = true;
@@ -32,6 +34,7 @@ int random(int min, int max)
     return min + rand() % ((max + 1) - min);
 }
 
+// generates a graph with number of vertices Ve
 int generateGraph(int **graph, int Ve)
 {
     int edges = 0;
@@ -237,7 +240,8 @@ int main()
             edgeCount.push_back(edges);
 
             // for some reason this isn't deallocating variables
-            // properly so the program takes up a ton of memory
+            // properly so the program takes up a metric fuck ton of memory
+            // no joke
             for (int i = 0; i < Ve; i++)
             {
                 delete graph[i];
