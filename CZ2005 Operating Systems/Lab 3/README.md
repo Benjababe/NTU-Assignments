@@ -4,7 +4,7 @@ Files required to be edited:
 
 * nachos-exp3-4/exp3/threadtest.cc
 
-Recommended to read through
+Recommended to read through:
 
 * nachos-exp3-4/threads/synch.cc
 
