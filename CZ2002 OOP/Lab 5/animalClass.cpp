@@ -47,4 +47,4 @@ void Mammal::move()
     cout << _name << " the mammal moves" << endl;
 }
 
-#endif
+#endif //A_CLASS

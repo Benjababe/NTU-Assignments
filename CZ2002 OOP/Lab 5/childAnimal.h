@@ -9,6 +9,7 @@ using namespace std;
 class Dog : public Mammal
 {
 public:
+    Dog();
     Dog(string n, COLOR c, string o);
     void speak();
     void move() override;
@@ -20,6 +21,7 @@ protected:
 class Cat : public Mammal
 {
 public:
+    Cat();
     Cat(string n, COLOR c);
     void move();
     void speak();
@@ -28,6 +30,7 @@ public:
 class Lion : public Mammal
 {
 public:
+    Lion();
     Lion(string n, COLOR c);
     void move();
     void speak();

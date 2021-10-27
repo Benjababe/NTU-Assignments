@@ -39,4 +39,4 @@ public:
     virtual void move();
 };
 
-#endif
+#endif //A_CLASS
