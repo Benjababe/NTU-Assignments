@@ -38,8 +38,10 @@ integer i;
 				begin
 					for (i=0; i<`NREG; i=i+1)
 					regdata[i] <=0;
-					regdata[2]<=2;
-					regdata[1]<=3;
+					regdata[1] <= 3;
+					regdata[2] <= 2;
+					regdata[4] <= 7;
+					regdata[7] <= 123;
 				end
 			else
 				regdata[waddr] <= (wen == 1) ? wdata : regdata[waddr];//when wen=1, then write wdata to LHS or mainintain the same data

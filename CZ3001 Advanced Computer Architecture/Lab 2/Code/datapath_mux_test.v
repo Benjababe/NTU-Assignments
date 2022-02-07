@@ -27,7 +27,7 @@ module datapath_mux_test;
 	// Inputs
 	reg clk;
 	reg rst;
-	reg [63:0] inst;
+	reg [31:0] inst;
 
 	// Outputs
 	wire [63:0] aluout;
