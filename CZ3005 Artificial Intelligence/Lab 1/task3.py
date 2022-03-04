@@ -2,8 +2,11 @@ from queue import PriorityQueue
 from misc import PathInfo, h, calc_path_distance, calc_path_energy
 
 
-def get_path(source: str, dest: str, budget: int, coord: dict, cost: dict, dist: dict, g: dict) -> PathInfo:
-    """ Modifying UCS in task 2 to an A* search. Uses distance from coord[x] to coord[dest] as heuristic function
+def astar(source: str, dest: str, budget: int, coord: dict, cost: dict, dist: dict, g: dict, gamma: float = 1) -> PathInfo:
+    """ Modifying UCS in task 2 to an A* search. 
+        h(n) = distance of coord[x] to coord[dest].
+        Takes gamma (y) as the multiplier for h(n)
+        f(n) = g(n) + y*h(n)
 
     Args:
         source (str): Source node
@@ -13,6 +16,7 @@ def get_path(source: str, dest: str, budget: int, coord: dict, cost: dict, dist:
         cost (dict): Dictionary of power cost to travel between 2 nodes
         dist (dict): Dictionary of distances between 2 nodes
         g (dict): Dictionary of neighbours, given a node as its key
+        gamma (float): Multiplier for the heuristic function. Defaults to 1
 
     Returns:
         PathInfo: Object containing all information needed to be printed
@@ -55,11 +59,11 @@ def get_path(source: str, dest: str, budget: int, coord: dict, cost: dict, dist:
                 # take new path if energy cost is within budget
                 if new_energy <= budget:
                     path_dist = pair[0] + dist[f"{current_node},{neighbour}"]
-                    h_dist = h(neighbour, dest, coord)
+                    h_dist = h(neighbour, dest, coord) * gamma
                     score = path_dist + h_dist
 
                     new_path = current_path.copy()
                     new_path.append(neighbour)
 
                     prio_queue.put((score, (new_energy, new_path)))
-# end_find_path
+# end_astar

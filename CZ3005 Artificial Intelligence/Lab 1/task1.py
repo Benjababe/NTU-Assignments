@@ -2,7 +2,7 @@ from queue import PriorityQueue
 from misc import PathInfo, calc_path_distance
 
 
-def get_path(source: str, dest: str, dist: dict, g: dict) -> PathInfo:
+def ucs(source: str, dest: str, dist: dict, g: dict) -> PathInfo:
     """ Super simple UCS, no heuristics or anything. Just using known neighbour distances
 
     Args:
@@ -54,4 +54,46 @@ def get_path(source: str, dest: str, dist: dict, g: dict) -> PathInfo:
 
                 prio_queue.put((score, new_path))
 
-# end_find_path
+    return PathInfo()
+# end_ucs
+
+
+def bfs(source: str, dest: str, dist: dict, g: dict) -> PathInfo:
+    """ Basic BFS. Unused in main code
+
+    Args:
+        source (str): Source node
+        dest (str): Destination node
+        dist (dict): Dictionary of distances between 2 nodes
+        g (dict): Dictionary of neighbours, given a node as its key
+
+    Returns:
+        PathInfo: Object containing all information needed to be printed
+    """
+
+    # queue contains current paths considered
+    queue = [[source]]
+    visited = set()
+
+    while len(queue) > 0:
+        current_path = queue.pop(0)
+
+        current_node = current_path[-1]
+
+        # skip path if latest node has already been visited
+        if current_node not in visited:
+            visited.add(current_node)
+
+            if current_node == dest:
+                path_info = PathInfo()
+                path_info.path = "->".join(current_path)
+                path_info.dist = calc_path_distance(current_path, dist)
+                path_info.energy = "Not considered"
+                return path_info
+
+            for neighbour in g[current_node]:
+                new_path = current_path + [neighbour]
+                queue.append(new_path)
+
+    return PathInfo()
+# end_bfs

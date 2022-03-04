@@ -6,10 +6,20 @@ ENERGY_BUDGET = 287932
 
 
 class PathInfo:
-    def __init__(self):
-        self.path = ""
-        self.dist = 0
-        self.energy = 0
+    """ PathInfo object contains information of the path found
+    """
+
+    def __init__(self, path="No path found", dist=-1, energy=-1):
+        """ Constructor for PathInfo
+
+        Args:
+            path (str, optional): String path joined with '->'. Defaults to "No path found".
+            dist (int, optional): Path distance. Defaults to -1.
+            energy (int, optional): Energy cost to traverse path. Defaults to -1.
+        """
+        self.path = path
+        self.dist = dist
+        self.energy = energy
 
 
 def load_json_files() -> Tuple[dict, dict, dict, dict]:
