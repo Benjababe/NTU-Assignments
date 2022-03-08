@@ -1,4 +1,4 @@
-import time
+from timeit import timeit
 from misc import PathInfo, ENERGY_BUDGET, load_json_files
 import task1
 import task2
@@ -39,94 +39,63 @@ def main():
 # end_main
 
 
-def run_task_1(dist: dict, g: dict, printout: bool = True) -> None:
+def run_task_1(dist: dict, g: dict) -> None:
     path1 = task1.ucs('1', '50', dist, g)
-    if printout:
-        print_path("Task 1", path1)
+    print_path("Task 1", path1)
 # end_run_task_1
 
 
-def run_task_2(cost: dict, dist: dict, g: dict, printout: bool = True) -> None:
+def run_task_2(cost: dict, dist: dict, g: dict) -> None:
     path2 = task2.ucs('1', '50', ENERGY_BUDGET, cost, dist, g)
-    if printout:
-        print_path("Task 2", path2)
+    print_path("Task 2", path2)
 # end_run_task_2
 
 
-def run_task_3(coord: dict, cost: dict, dist: dict, g: dict, printout: bool = True) -> None:
+def run_task_3(coord: dict, cost: dict, dist: dict, g: dict) -> None:
     path3 = task3.astar('1', '50', ENERGY_BUDGET, coord, cost, dist, g)
-    if printout:
-        print_path("Task 3", path3)
+    print_path("Task 3", path3)
 # end_run_task_2
 
 
 def perf_test_task_1(dist: dict, g: dict) -> None:
-    total_time = 0
+    avg_time = timeit(lambda: task1.ucs('1', '50', dist, g),
+                      setup="import task1", number=PERF_SAMPLES) / PERF_SAMPLES * 1000
 
-    for _ in range(PERF_SAMPLES + 1):
-        start_time = time.perf_counter()
-        task1.ucs('1', '50', dist, g)
-        total_time += (time.perf_counter() - start_time)
-
-    total_time *= 1000 / SCALE_SAMPLES
-    total_time = round(total_time, 2)
-    print(
-        f"(Task 3) Average time taken: {total_time} ms from {PERF_SAMPLES} samples")
+    msg = f"(Task 1) Average time taken: {avg_time:.2f} ms from {PERF_SAMPLES} samples"
+    print(msg)
 # end_perf_test_task_1
 
 
 def perf_test_task_2(cost: dict, dist: dict, g: dict) -> None:
-    total_time = 0
+    avg_time = timeit(lambda: task2.ucs('1', '50', ENERGY_BUDGET, cost, dist, g),
+                      setup="import task2", number=PERF_SAMPLES) / PERF_SAMPLES * 1000
 
-    for _ in range(PERF_SAMPLES + 1):
-        start_time = time.perf_counter()
-        task2.ucs('1', '50', ENERGY_BUDGET, cost, dist, g)
-        total_time += (time.perf_counter() - start_time)
-
-    total_time *= 1000 / SCALE_SAMPLES
-    total_time = round(total_time, 2)
-    print(
-        f"(Task 2) Average time taken: {total_time} ms from {PERF_SAMPLES} samples")
+    msg = f"(Task 2) Average time taken: {avg_time:.2f} ms from {PERF_SAMPLES} samples"
+    print(msg)
 # end_perf_test_task_2
 
 
 def perf_test_task_3(coord: dict, cost: dict, dist: dict, g: dict) -> None:
-    total_time = 0
+    avg_time = timeit(lambda: task3.astar('1', '50', ENERGY_BUDGET, coord, cost, dist, g, gamma=1),
+                      setup="import task3", number=PERF_SAMPLES) / PERF_SAMPLES * 1000
 
-    for _ in range(PERF_SAMPLES + 1):
-        start_time = time.perf_counter()
-        task3.astar('1', '50', ENERGY_BUDGET, coord, cost, dist, g, gamma=1)
-        total_time += (time.perf_counter() - start_time)
-
-    total_time *= 1000 / SCALE_SAMPLES
-    total_time = round(total_time, 2)
-    print(
-        f"(Task 3) Average time taken: {total_time} ms from {PERF_SAMPLES} samples")
+    msg = f"(Task 3) Average time taken: {avg_time:.2f} ms from {PERF_SAMPLES} samples"
+    print(msg)
 # end_perf_test_task_3
 
 
 def scale_test_task_3(coord: dict, cost: dict, dist: dict, g: dict) -> None:
     for i in range(0, GAMMA_LIMIT*10 + 1, GAMMA_INCREMENT):
-        # y = 0 to GAMMA_LIMIT, in increments of 0.2
         gamma = i / 10
-        total_time = 0
-        total_dist = 0
 
         for _ in range(SCALE_SAMPLES + 1):
-            start_time = time.perf_counter()
-            path = task3.astar('1', '50', ENERGY_BUDGET, coord,
-                               cost, dist, g, gamma=gamma)
+            avg_time = timeit(lambda: task3.astar('1', '50', ENERGY_BUDGET, coord, cost, dist, g, gamma=gamma),
+                              setup="import task3", number=PERF_SAMPLES) / SCALE_SAMPLES * 1000
 
-            total_time += (time.perf_counter() - start_time)
-            total_dist += path.dist
+            path = task3.astar('1', '50', ENERGY_BUDGET,
+                               coord, cost, dist, g, gamma=gamma)
 
-        total_time *= 1000 / SCALE_SAMPLES
-        total_time = round(total_time, 2)
-
-        total_dist /= SCALE_SAMPLES
-        total_dist = round(total_dist, 2)
-
-        msg = f"For gamma: {gamma}, avg time taken: {total_time} ms, avg distance: {total_dist}"
+        msg = f"For gamma: {gamma}, avg time taken: {avg_time:.2f} ms, distance: {path.dist:.2f}"
         print(msg)
 # end_scale_test_task_3
 
