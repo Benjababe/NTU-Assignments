@@ -1,0 +1,3 @@
+Normal for loop: 2100ns
+2 unrolling loop: 1170ns
+4 unrolling loop: 750ns
