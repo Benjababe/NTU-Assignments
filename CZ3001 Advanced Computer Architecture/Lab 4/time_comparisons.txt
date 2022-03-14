@@ -1,3 +1,5 @@
+Time should be more or less the same but I've made some changes with the instructions since I measured it.
+
 Normal for loop: 2100ns
 2 unrolling loop: 1170ns
 4 unrolling loop: 750ns
