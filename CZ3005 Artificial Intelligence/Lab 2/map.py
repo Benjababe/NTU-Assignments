@@ -33,60 +33,64 @@ class Cell():
         """
         self.grid[1] = [' ', '?', ' ']
         self.grid[2][0] = '.'
+        self.grid[2][1] = '.'
 
     def set_wall(self):
         self.grid = [['#', '#', '#'], ['#', '#', '#'], ['#', '#', '#']]
         self.elements["wall"] = "on"
 
     def set_percept_confounded(self):
-        self.grid[0][0] = "%"
+        self.grid[0][0] = '%'
 
     def set_percept_stench(self):
-        self.grid[0][1] = "="
+        self.grid[0][1] = '='
 
     def set_percept_tingle(self):
-        self.grid[0][2] = "T"
+        self.grid[0][2] = 'T'
 
     def set_percept_agent(self, dir: str):
-        self.grid[1][0] = "−"
-        self.grid[1][2] = "−"
+        self.grid[1][0] = '−'
+        self.grid[1][2] = '−'
 
         if dir == "rnorth":
-            self.grid[1][1] = "∧"
+            self.grid[1][1] = '∧'
         if dir == "reast":
-            self.grid[1][1] = ">"
+            self.grid[1][1] = '>'
         if dir == "rsouth":
-            self.grid[1][1] = "V"
+            self.grid[1][1] = 'V'
         if dir == "rwest":
-            self.grid[1][1] = "<"
+            self.grid[1][1] = '<'
 
     def set_percept_wumpus(self):
-        self.grid[1][1] = "W"
+        self.grid[1][1] = 'W'
 
     def set_percept_portal(self):
-        self.grid[1][1] = "O"
+        self.grid[1][1] = 'O'
 
     def set_percept_u(self):
-        self.grid[1][1] = "U"
+        self.grid[1][1] = 'U'
 
     def set_percept_safe(self):
-        self.grid[1][1] = "s"
+        self.grid[1][1] = 's'
 
     def set_percept_visited(self):
-        self.grid[1][1] = "S"
+        self.grid[1][1] = 'S'
 
     def set_percept_glitter(self):
-        self.grid[2][0] = "*"
+        self.grid[2][0] = '*'
 
     def set_percept_bump(self):
         self.known_wall = True
-        self.grid[2][1] = "B"
+        self.grid[2][1] = 'B'
+
+    def clear_percept_bump(self):
+        self.grid[2][1] = '.'
 
     def set_percept_scream(self):
-        self.grid[2][2] = "@"
+        self.grid[2][2] = '@'
 
     def pickup(self):
-        self.grid[2][0] = "."
+        self.grid[2][0] = '.'
         self.elements["glitter"] = "off"
 
     def get_line(self, i: int):
@@ -99,15 +103,16 @@ class Map():
     rel_map_size: List[int] = [3, 3]
     agent_start: List[int]
     agent_pos: List[int]
-    agent_rel_dir: str
     agent_abs_dir: str
+    agent_angle_offset: int = 0
     tmp_bumped: str
     cells: List[List[Cell]]
 
-    def __init__(self, N: int, M: int) -> None:
+    def __init__(self, N: int, M: int, dir: str) -> None:
         super().__init__()
         self.N = N
         self.M = M
+        self.agent_abs_dir = dir
         self.tmp_bumped = "off"
 
         self.init_map()
@@ -140,19 +145,19 @@ class Map():
             for col in range(self.N):
                 cell = self.cells[row][col]
                 if cell.elements["wall"] != "on":
+                    cell.elements["confounded"] = "off"
                     cell.set_empty_cell()
 
-    def add_agent(self):
-        cell = self.cells[self.agent_pos[1]][self.agent_pos[0]]
-        cell.set_percept_agent(self.agent_abs_dir)
-
-    def reposition_agent(self, X: int, Y: int, dir: str = "rnorth"):
+    def reposition_agent(self, X: int, Y: int):
         self.reset_map()
         self.rel_map_size = [3, 3]
         self.agent_start = [X, Y]
         self.agent_pos = [X, Y]
-        self.agent_abs_dir = dir
         self.cells[Y][X].elements["confounded"] = "on"
+
+        dirs = ["rnorth", "reast", "rsouth", "rwest"]
+        self.agent_angle_offset += dirs.index(self.agent_abs_dir) * 90
+        self.agent_angle_offset %= 360
 
     def add_coin(self, X: int, Y: int):
         cell = self.cells[Y][X]
@@ -213,8 +218,12 @@ class Map():
             dx = abs(abs(self.agent_pos[0]) - self.agent_start[0])
             dy = abs(abs(self.agent_pos[1]) - self.agent_start[1])
 
-            self.rel_map_size[0] = max(dx*2 + 3, self.rel_map_size[0])
-            self.rel_map_size[1] = max(dy*2 + 3, self.rel_map_size[1])
+            if self.agent_angle_offset % 180 == 0:
+                self.rel_map_size[0] = max(dx*2 + 3, self.rel_map_size[0])
+                self.rel_map_size[1] = max(dy*2 + 3, self.rel_map_size[1])
+            else:
+                self.rel_map_size[1] = max(dx*2 + 3, self.rel_map_size[0])
+                self.rel_map_size[0] = max(dy*2 + 3, self.rel_map_size[1])
 
         elif action == "turnleft":
             if self.agent_abs_dir == "rnorth":
@@ -245,9 +254,6 @@ class Map():
         """
 
         cell = self.cells[self.agent_pos[1]][self.agent_pos[0]]
-        bumped = self.tmp_bumped
-        self.tmp_bumped = "off"
-
         perception = Perception()
 
         if cell.elements["confounded"] == "on":
@@ -258,25 +264,42 @@ class Map():
             perception.enable_perception(Perception.TINGLE)
         if cell.elements["glitter"] == "on":
             perception.enable_perception(Perception.GLITTER)
-        if bumped == "on":
+        if self.tmp_bumped == "on":
             perception.enable_perception(Perception.BUMP)
         if cell.elements["scream"] == "on":
             perception.enable_perception(Perception.SCREAM)
 
+        self.tmp_bumped = "off"
+
         return perception
 
-    def update_map_with_perceptions(self, prolog: Prolog, ref):
-        """Print adds to the map the current perceptions of the agent
+    def update_map_with_perceptions(self, prolog: Prolog, ref: List[int], abs_dir: bool):
+        """Adds to the map the current perceptions of the agent
 
         Args:
             prolog (Prolog): The initialised prolog file of agent
+            ref (List[int]): Reference coordinate that the X and Y offsets are based off of
+                             Eg (ref = [3, 3] means that a relative coordinate of (1, 3) is (4, 6) 
+                             if initial relative and absolute direction are the same)
         """
+
         knawledge = Knawledge(prolog)
 
         for kb in knawledge.kb:
             for data in kb["data"]:
-                X = ref[0] + data["X"]
-                Y = ref[1] - data["Y"]
+                if self.agent_angle_offset == 0:
+                    X = ref[0] + data['X']
+                    Y = ref[1] - data['Y']
+                elif self.agent_angle_offset == 180:
+                    X = ref[0] - data['X']
+                    Y = ref[1] + data['Y']
+                elif self.agent_angle_offset == 90:
+                    X = ref[0] + data['Y']
+                    Y = ref[1] + data['X']
+                elif self.agent_angle_offset == 270:
+                    X = ref[0] - data['Y']
+                    Y = ref[1] - data['X']
+
                 cell = self.cells[Y][X]
 
                 # no need to update walls
@@ -303,11 +326,13 @@ class Map():
                     cell.set_percept_u()
                 elif kb["type"] == Knawledge.BUMP:
                     cell.set_percept_bump()
-                    prolog.query("retractall(bump(_, _)")
                 elif kb["type"] == Knawledge.WALL:
                     cell.set_wall()
                 elif kb["type"] == Knawledge.AGENT:
-                    cell.set_percept_agent(data["Dir"])
+                    if abs_dir:
+                        cell.set_percept_agent(self.agent_abs_dir)
+                    else:
+                        cell.set_percept_agent(data["Dir"])
 
     def reset_absolute_map(self, full_clear: bool = False):
         """Clears all of the cell drawing back to an empty map
@@ -333,7 +358,7 @@ class Map():
         """
 
         r_map = RelativeMap(*self.rel_map_size)
-        r_map.update_map_with_perceptions(prolog, r_map.center)
+        r_map.update_map_with_perceptions(prolog, r_map.center, False)
         return r_map
 
     def print_relative_map(self, prolog: Prolog):
@@ -342,7 +367,7 @@ class Map():
 
     def print_absolute_map(self, prolog: Prolog):
         self.reset_absolute_map(full_clear=False)
-        self.update_map_with_perceptions(prolog, self.agent_start)
+        self.update_map_with_perceptions(prolog, self.agent_start, True)
         self.print_map()
 
     def update_map_with_data(self):
@@ -378,23 +403,23 @@ class Map():
         self.print_map()
 
     def print_map(self):
-        print("-" * (6*self.N+1))
+        print('-' * (6*self.N+1))
         for row in self.cells:
             line_0 = [cell.get_line(0) for cell in row]
             line_1 = [cell.get_line(1) for cell in row]
             line_2 = [cell.get_line(2) for cell in row]
 
-            print("|", end="")
+            print('|', end='')
             for cell in line_0:
-                print(" ".join(cell), end="|")
-            print("\n|", end="")
+                print(" ".join(cell), end='|')
+            print("\n|", end='')
             for cell in line_1:
-                print(" ".join(cell), end="|")
-            print("\n|", end="")
+                print(" ".join(cell), end='|')
+            print("\n|", end='')
             for cell in line_2:
-                print(" ".join(cell), end="|")
-            print("")
-            print("-" * (6*self.N+1))
+                print(" ".join(cell), end='|')
+            print('')
+            print('-' * (6*self.N+1))
 
 
 class RelativeMap(Map):
@@ -406,6 +431,7 @@ class RelativeMap(Map):
     def __init__(self, N, M):
         self.N = N
         self.M = M
+        self.agent_angle_offset = 0
         self.center = [N//2, M//2]
         self.create_map()
 

@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import List
 from pyswip import Prolog
 
 
@@ -94,14 +94,14 @@ class Perception():
     full_printout = ["Confounded", "Stench", "Tingle",
                      "Glitter", "Bump", "Scream"]
 
-    short_printout = ["C", "S", "T", "G", "B", "S"]
+    short_printout = ['C', 'S', 'T', 'G', 'B', 'S']
 
     query_list: List[str]
     sense_printout: List[str]
 
     def __init__(self):
         self.query_list = ["off", "off", "off", "off", "off", "off"]
-        self.sense_printout = ["C", "S", "T", "G", "B", "S"]
+        self.sense_printout = ['C', 'S', 'T', 'G', 'B', 'S']
 
     def enable_perception(self, type: int):
         self.query_list[type] = "on"
