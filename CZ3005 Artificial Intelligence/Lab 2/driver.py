@@ -20,7 +20,6 @@ def setup_map(N: int, M: int) -> Map:
 
     w_map.add_portal(1, 3)
     w_map.add_portal(2, 1)
-    w_map.add_portal(3, 4)
 
     return w_map
 
@@ -31,7 +30,7 @@ def setup_prolog(filename: str, w_map: Map) -> Prolog:
     list(prolog.query("init"))
 
     perceptions = w_map.get_cell_perceptions()
-    list(prolog.query(f"reposition([{','.join(perceptions)}])"))
+    list(prolog.query(f"reposition([{perceptions.get_query_str()}])"))
     return prolog
 
 
@@ -46,7 +45,7 @@ def make_action(prolog: Prolog, w_map: Map, action: str = None, print_map: bool 
     w_map.do_action(action)
     perceptions = w_map.get_cell_perceptions()
 
-    query_str = f"action({action}, [{','.join(perceptions)}])"
+    query_str = f"action({action}, [{perceptions.get_query_str()}])"
     list(prolog.query(query_str))
     print(query_str)
 
@@ -54,19 +53,10 @@ def make_action(prolog: Prolog, w_map: Map, action: str = None, print_map: bool 
         print("Stepped on a portal lol")
         w_map.reposition_agent(3, 3, "rnorth")
         perceptions = w_map.get_cell_perceptions()
-        list(prolog.query(f"reposition([{','.join(perceptions)}])"))
-
-    sense_printout = [
-        "Confounded" if perceptions[0] == "on" else "C",
-        "Stench" if perceptions[1] == "on" else "S",
-        "Tingle" if perceptions[2] == "on" else "T",
-        "Glitter" if perceptions[3] == "on" else "G",
-        "Bump" if perceptions[4] == "on" else "B",
-        "Scream" if perceptions[5] == "on" else "S"
-    ]
+        list(prolog.query(f"reposition([{perceptions.get_query_str()}])"))
 
     if print_map:
-        print('-'.join(sense_printout))
+        print(perceptions.get_sense_printout())
         # w_map.print_absolute_map(prolog)
         w_map.print_relative_map(prolog)
 

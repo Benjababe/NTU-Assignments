@@ -1,7 +1,7 @@
 from typing import List, Tuple
 from pyswip import Prolog
 
-from knawledge import Knawledge
+from knawledge import Knawledge, Perception
 
 
 class Cell():
@@ -240,20 +240,30 @@ class Map():
         cell = self.cells[self.agent_pos[1]][self.agent_pos[0]]
         return cell.elements["portal"] == "on"
 
-    def get_cell_perceptions(self) -> List[str]:
+    def get_cell_perceptions(self) -> Perception:
         """Retrives current perceptions L of the agent
-
-        Returns:
-            List[str]: Sensory input to the agent
         """
+
         cell = self.cells[self.agent_pos[1]][self.agent_pos[0]]
         bumped = self.tmp_bumped
         self.tmp_bumped = "off"
-        return [
-            cell.elements["confounded"], cell.elements["stench"],
-            cell.elements["tingle"], cell.elements["glitter"],
-            bumped, cell.elements["scream"]
-        ]
+
+        perception = Perception()
+
+        if cell.elements["confounded"] == "on":
+            perception.enable_perception(Perception.CONFOUNDED)
+        if cell.elements["stench"] == "on":
+            perception.enable_perception(Perception.STENCH)
+        if cell.elements["tingle"] == "on":
+            perception.enable_perception(Perception.TINGLE)
+        if cell.elements["glitter"] == "on":
+            perception.enable_perception(Perception.GLITTER)
+        if bumped == "on":
+            perception.enable_perception(Perception.BUMP)
+        if cell.elements["scream"] == "on":
+            perception.enable_perception(Perception.SCREAM)
+
+        return perception
 
     def update_map_with_perceptions(self, prolog: Prolog, ref):
         """Print adds to the map the current perceptions of the agent
