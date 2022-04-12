@@ -39,7 +39,7 @@ def get_action(action: str = None) -> str:
 
 def make_action(prolog: Prolog, w_map: Map, action: str = None, print_map: bool = True):
     # preemptively clears bumps to prevent old bumps from showing
-    list(prolog.query("retractall(bump(_, _))"))
+    w_map.clear_bumps()
 
     action = get_action(action=action)
     w_map.do_action(action)
@@ -72,7 +72,7 @@ def auto_explore(prolog: Prolog, w_map: Map):
 
 def handle_explore_result(prolog: Prolog, w_map: Map, L: List[Dict[str, List[Atom]]]) -> bool:
     if len(L) == 0:
-        print("[Driver] Out of explorable space...")
+        print("[Driver] Nothing from explore(L) anymore...")
         return False
 
     actions = L[0]['L']

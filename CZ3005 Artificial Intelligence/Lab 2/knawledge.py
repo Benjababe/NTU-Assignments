@@ -72,14 +72,9 @@ class Knawledge():
             "type": self.WALL
         }
 
-        bump = {
-            "data": list(prolog.query("bump(X, Y)")),
-            "type": self.BUMP
-        }
-
         self.kb = [
             wumpus, confundus, u, tingle, glitter, confounded,
-            stench, safe, visited, wall, bump, agent
+            stench, safe, visited, wall, agent
         ]
 
 

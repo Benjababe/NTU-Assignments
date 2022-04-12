@@ -105,7 +105,8 @@ class Map():
     agent_pos: List[int]
     agent_abs_dir: str
     agent_angle_offset: int = 0
-    tmp_bumped: str
+    bumped: bool
+
     cells: List[List[Cell]]
 
     def __init__(self, N: int, M: int, dir: str) -> None:
@@ -113,7 +114,7 @@ class Map():
         self.N = N
         self.M = M
         self.agent_abs_dir = dir
-        self.tmp_bumped = "off"
+        self.bumped = False
 
         self.init_map()
 
@@ -155,6 +156,9 @@ class Map():
         self.agent_pos = [X, Y]
         self.cells[Y][X].elements["confounded"] = "on"
 
+        # angle offset is based on clockwise direction
+        # so if currently facing east and enter a portal,
+        # offset of relative to absolute direction is 90 degrees after repositioning
         dirs = ["rnorth", "reast", "rsouth", "rwest"]
         self.agent_angle_offset += dirs.index(self.agent_abs_dir) * 90
         self.agent_angle_offset %= 360
@@ -176,6 +180,9 @@ class Map():
         cell = self.cells[Y][X]
         cell.elements["portal"] = "on"
         self.set_adjacent_element(X, Y, "tingle")
+
+    def clear_bumps(self):
+        self.bumped = False
 
     def set_adjacent_element(self, X: int, Y: int, element):
         self.cells[Y-1][X].elements[element] = "on"
@@ -210,20 +217,21 @@ class Map():
             cell = self.cells[self.agent_pos[1]][self.agent_pos[0]]
             if cell.elements["wall"] == "on":
                 self.agent_pos = prev_pos
+                self.bumped = True
                 cell = self.cells[self.agent_pos[1]][self.agent_pos[0]]
                 cell.set_percept_bump()
-                self.tmp_bumped = "on"
 
             # check if relative map needs resizing
             dx = abs(abs(self.agent_pos[0]) - self.agent_start[0])
             dy = abs(abs(self.agent_pos[1]) - self.agent_start[1])
 
+            # because expansion of relative map depends on relative x/y width explored
             if self.agent_angle_offset % 180 == 0:
                 self.rel_map_size[0] = max(dx*2 + 3, self.rel_map_size[0])
                 self.rel_map_size[1] = max(dy*2 + 3, self.rel_map_size[1])
             else:
-                self.rel_map_size[1] = max(dx*2 + 3, self.rel_map_size[0])
-                self.rel_map_size[0] = max(dy*2 + 3, self.rel_map_size[1])
+                self.rel_map_size[1] = max(dx*2 + 3, self.rel_map_size[1])
+                self.rel_map_size[0] = max(dy*2 + 3, self.rel_map_size[0])
 
         elif action == "turnleft":
             if self.agent_abs_dir == "rnorth":
@@ -264,12 +272,10 @@ class Map():
             perception.enable_perception(Perception.TINGLE)
         if cell.elements["glitter"] == "on":
             perception.enable_perception(Perception.GLITTER)
-        if self.tmp_bumped == "on":
+        if self.bumped:
             perception.enable_perception(Perception.BUMP)
         if cell.elements["scream"] == "on":
             perception.enable_perception(Perception.SCREAM)
-
-        self.tmp_bumped = "off"
 
         return perception
 
@@ -287,15 +293,25 @@ class Map():
 
         for kb in knawledge.kb:
             for data in kb["data"]:
+                # relative X and Y positions may not correspond with absolute X and Y positions
+                # so adjust accordingly
+
+                # both directions are the same
                 if self.agent_angle_offset == 0:
                     X = ref[0] + data['X']
                     Y = ref[1] - data['Y']
+
+                # eg. relative = rnorth, absolute = rsouth
                 elif self.agent_angle_offset == 180:
                     X = ref[0] - data['X']
                     Y = ref[1] + data['Y']
+
+                # eg. relative = rnorth, absolute = reast
                 elif self.agent_angle_offset == 90:
                     X = ref[0] + data['Y']
                     Y = ref[1] + data['X']
+
+                # eg. relative = rnorth, absolute = rwest
                 elif self.agent_angle_offset == 270:
                     X = ref[0] - data['Y']
                     Y = ref[1] - data['X']
@@ -324,8 +340,6 @@ class Map():
                     cell.set_percept_glitter()
                 elif kb["type"] == Knawledge.U:
                     cell.set_percept_u()
-                elif kb["type"] == Knawledge.BUMP:
-                    cell.set_percept_bump()
                 elif kb["type"] == Knawledge.WALL:
                     cell.set_wall()
                 elif kb["type"] == Knawledge.AGENT:
@@ -333,6 +347,8 @@ class Map():
                         cell.set_percept_agent(self.agent_abs_dir)
                     else:
                         cell.set_percept_agent(data["Dir"])
+                    if self.bumped:
+                        cell.set_percept_bump()
 
     def reset_absolute_map(self, full_clear: bool = False):
         """Clears all of the cell drawing back to an empty map
@@ -357,7 +373,7 @@ class Map():
             RelativeMap: The relative map with drawn cells
         """
 
-        r_map = RelativeMap(*self.rel_map_size)
+        r_map = RelativeMap(*self.rel_map_size, self.bumped)
         r_map.update_map_with_perceptions(prolog, r_map.center, False)
         return r_map
 
@@ -423,16 +439,15 @@ class Map():
 
 
 class RelativeMap(Map):
-    N: int
-    M: int
     center: List[int]
-    cells: List[List[Cell]]
 
-    def __init__(self, N, M):
+    def __init__(self, N, M, bumped):
         self.N = N
         self.M = M
         self.agent_angle_offset = 0
         self.center = [N//2, M//2]
+        self.bumped = bumped
+
         self.create_map()
 
     def create_map(self):
