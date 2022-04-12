@@ -48,9 +48,12 @@ class Cell():
     def set_percept_tingle(self):
         self.grid[0][2] = 'T'
 
-    def set_percept_agent(self, dir: str):
+    def set_percept_npc(self):
         self.grid[1][0] = '−'
         self.grid[1][2] = '−'
+
+    def set_percept_agent(self, dir: str):
+        self.set_percept_npc()
 
         if dir == "rnorth":
             self.grid[1][1] = '∧'
@@ -62,12 +65,15 @@ class Cell():
             self.grid[1][1] = '<'
 
     def set_percept_wumpus(self):
+        self.set_percept_npc()
         self.grid[1][1] = 'W'
 
     def set_percept_portal(self):
+        self.set_percept_npc()
         self.grid[1][1] = 'O'
 
     def set_percept_u(self):
+        self.set_percept_npc()
         self.grid[1][1] = 'U'
 
     def set_percept_safe(self):

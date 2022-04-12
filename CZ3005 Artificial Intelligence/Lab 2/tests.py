@@ -4,7 +4,7 @@ from map import Map
 
 
 # wumpus is at (0, 1)
-def test_wumpus_detection(prolog: Prolog, w_map: Map):
+def test_wumpus_detection(prolog: Prolog, a_map: Map):
     list(prolog.query("action(turnleft,    [on, on, off, off, off, off])"))
     c = list(prolog.query("wumpus(X,Y)"))
     list(prolog.query("action(moveforward, [off, off, off, off, off, off])"))
@@ -21,7 +21,7 @@ def test_wumpus_detection(prolog: Prolog, w_map: Map):
 
 
 # portal is at (1, 2)
-def test_portal(prolog: Prolog, w_map: Map):
+def test_portal(prolog: Prolog, a_map: Map):
     list(prolog.query("action(moveforward, [on, off, off, off, off, off])"))
     list(prolog.query("action(turnright,   [off, off, off, off, off, off])"))
     list(prolog.query("action(moveforward, [off, off, off, off, off, off])"))

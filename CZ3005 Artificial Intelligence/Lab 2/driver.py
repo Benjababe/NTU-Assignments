@@ -1,96 +1,99 @@
 from typing import Dict, List
 from pyswip import *
-from random import choice
 
 from map import Map
 
 
 def setup_map(N: int, M: int) -> Map:
-    w_map = Map(N, M, "rnorth")
-    w_map.reposition_agent(3, 2)
+    a_map = Map(N, M, "rnorth")
+    a_map.reposition_agent(3, 2)
 
-    w_map.add_wumpus(5, 4)
+    a_map.add_wumpus(5, 4)
 
-    w_map.add_coin(1, 1)
-    w_map.add_coin(3, 2)
+    a_map.add_coin(1, 1)
+    a_map.add_coin(3, 2)
 
-    w_map.add_portal(2, 1)
-    w_map.add_portal(4, 1)
-    w_map.add_portal(4, 4)
+    a_map.add_portal(2, 1)
+    a_map.add_portal(4, 1)
+    a_map.add_portal(4, 4)
 
-    return w_map
+    return a_map
 
 
-def setup_prolog(filename: str, w_map: Map) -> Prolog:
+def setup_prolog(filename: str, a_map: Map) -> Prolog:
+    # initialise prolog file
     prolog = Prolog()
     prolog.consult(filename)
     list(prolog.query("init"))
 
-    perceptions = w_map.get_cell_perceptions()
+    # send initial perceptions to agent
+    perceptions = a_map.get_cell_perceptions()
     list(prolog.query(f"reposition([{perceptions.get_query_str()}])"))
     return prolog
 
 
-def get_action(action: str = None) -> str:
-    if action:
-        return action
-    return choice(["moveforward", "turnleft", "turnright"])
-
-
-def make_action(prolog: Prolog, w_map: Map, action: str = None, print_map: bool = True):
+def make_action(prolog: Prolog, a_map: Map, action: str = None, print_map: bool = True):
     # preemptively clears bumps to prevent old bumps from showing
-    w_map.clear_bumps()
+    a_map.clear_bumps()
 
-    action = get_action(action=action)
-    w_map.do_action(action)
-    perceptions = w_map.get_cell_perceptions()
+    # updates map with action
+    a_map.do_action(action)
 
+    # get new perceptions from cell after action
+    perceptions = a_map.get_cell_perceptions()
+
+    # update agent with new perceptions
     query_str = f"action({action}, [{perceptions.get_query_str()}])"
     list(prolog.query(query_str))
 
-    if w_map.check_portal():
-        w_map.reposition_agent(2, 3)
-        perceptions = w_map.get_cell_perceptions()
+    # reposition if stepped on a confundus portal
+    if a_map.check_portal():
+        a_map.reposition_agent(2, 3)
+        perceptions = a_map.get_cell_perceptions()
         list(prolog.query(f"reposition([{perceptions.get_query_str()}])"))
 
+    # print out map and relevant info
     if print_map:
         print(f"[Driver] {perceptions.get_sense_printout()}")
-        w_map.print_absolute_map(prolog)
-        w_map.print_relative_map(prolog)
+        a_map.print_absolute_map(prolog)
+        a_map.print_relative_map(prolog)
 
 
-# continues using explore(L) until no safe cells are left
-def auto_explore(prolog: Prolog, w_map: Map):
+# continues using explore/1 until no safe cells are left
+def auto_explore(prolog: Prolog, a_map: Map):
     path_exists = True
 
+    # keep calling explore/1 until there isn't anymore valid paths for it
+    # means all safe cells are visited, no gold on the floor and agent is at (0, 0)
     while path_exists:
         L = list(prolog.query("explore(L)"))
-        path_exists = handle_explore_result(prolog, w_map, L)
+        path_exists = handle_explore_result(prolog, a_map, L)
 
+    print("[Driver] Nothing from explore/1 anymore...")
     return
 
 
-def handle_explore_result(prolog: Prolog, w_map: Map, L: List[Dict[str, List[Atom]]]) -> bool:
+def handle_explore_result(prolog: Prolog, a_map: Map, L: List[Dict[str, List[Atom]]]) -> bool:
     if len(L) == 0:
-        print("[Driver] Nothing from explore(L) anymore...")
         return False
 
+    # apply actions generated from explore/1
     actions = L[0]['L']
     for action in actions:
-        make_action(prolog, w_map, action=action.value, print_map=True)
+        make_action(prolog, a_map, action=action, print_map=True)
 
     return True
 
 
 def main():
-    w_map = setup_map(7, 6)
-    prolog = setup_prolog("agent.pl", w_map)
+    a_map = setup_map(7, 6)
+    prolog = setup_prolog("agent.pl", a_map)
 
-    w_map.print_init_map()
-    w_map.reset_absolute_map(full_clear=True)
-    w_map.print_relative_map(prolog)
+    a_map.print_init_map()
+    a_map.reset_absolute_map(full_clear=True)
+    a_map.print_relative_map(prolog)
 
-    auto_explore(prolog, w_map)
+    auto_explore(prolog, a_map)
 
 
 if __name__ == "__main__":
