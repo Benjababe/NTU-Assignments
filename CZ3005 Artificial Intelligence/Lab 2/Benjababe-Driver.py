@@ -615,7 +615,7 @@ def setup_prolog(filename: str, a_map: Map) -> Prolog:
     # initialise prolog file
     prolog = Prolog()
     prolog.consult(filename)
-    list(prolog.query("init"))
+    list(prolog.query("reborn"))
 
     # send initial perceptions to agent
     perceptions = a_map.get_cell_perceptions()
@@ -679,7 +679,7 @@ def handle_explore_result(prolog: Prolog, a_map: Map, L: List[Dict[str, List[Ato
     actions = L[0]['L']
     for action in actions[:-1]:
         make_action(prolog, a_map, action)
-    make_action(prolog, a_map, actions[-1], True, True)
+    make_action(prolog, a_map, actions[-1])
 
     return True
 
@@ -693,18 +693,18 @@ def printout_glitter_visited_safe():
 
     print("===[Testing glitter/2, safe/2, visited/2 and pickup]===")
     print("Moving agent to (0, 1) first")
-    make_action(prolog, a_map, "moveforward", True, True)
+    make_action(prolog, a_map, "moveforward", )
     print("Agent now picks up the coin")
-    make_action(prolog, a_map, "pickup", True, True)
+    make_action(prolog, a_map, "pickup", )
     print("The glitter indicator on (0, 1) should now be gone")
     print("Now moving agent to (-1, 0), only printing relative map for last action")
-    make_action(prolog, a_map, "turnright", False, False)
-    make_action(prolog, a_map, "turnright", False, False)
-    make_action(prolog, a_map, "moveforward", False, False)
-    make_action(prolog, a_map, "turnright", False, False)
-    make_action(prolog, a_map, "moveforward", True, True)
+    make_action(prolog, a_map, "turnright")
+    make_action(prolog, a_map, "turnright")
+    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "turnright")
+    make_action(prolog, a_map, "moveforward")
     print("Agent now picks up the second coin")
-    make_action(prolog, a_map, "pickup", True, True)
+    make_action(prolog, a_map, "pickup")
     print("The glitter indicator on (-1, 0) should now be gone")
 
     safe = list(prolog.query("safe(X, Y)"))
@@ -728,17 +728,17 @@ def printout_confundus_tingle():
 
     print("===[Testing confundus/2 and tingle/2]===")
     print("Moving agent to (-1, 1) first")
-    make_action(prolog, a_map, "turnleft", False, False)
-    make_action(prolog, a_map, "moveforward", False, False)
-    make_action(prolog, a_map, "turnright", False, False)
-    make_action(prolog, a_map, "moveforward", True, True)
+    make_action(prolog, a_map, "turnleft")
+    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "turnright")
+    make_action(prolog, a_map, "moveforward")
     print("Tingle indicator should show and portals should surround the player")
     print("But cells that are safe or visited should not be portals")
     print("Now moving agent to (0, -2)")
-    make_action(prolog, a_map, "turnright", False, False)
-    make_action(prolog, a_map, "moveforward", False, False)
-    make_action(prolog, a_map, "turnleft", False, False)
-    make_action(prolog, a_map, "moveforward", True, True)
+    make_action(prolog, a_map, "turnright")
+    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "turnleft")
+    make_action(prolog, a_map, "moveforward")
 
     confundus = list(prolog.query("confundus(X, Y)"))
     tingle = list(prolog.query("tingle(X, Y)"))
@@ -761,13 +761,13 @@ def printout_wumpus_stench_bump_current():
 
     print("===[Testing wumpus/2, stench/2, wall/2, bump, scream and shoot]===")
     print("Now moving agent to (2, 0)")
-    make_action(prolog, a_map, "turnright", False, False)
-    make_action(prolog, a_map, "moveforward", False, False)
-    make_action(prolog, a_map, "moveforward", True, True)
+    make_action(prolog, a_map, "turnright")
+    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "moveforward")
     print("Stench indicator should show and wumpus should surround the player")
     print("But cells that are safe or visited should not be wumpuses (wumpi?)")
     print("Now we move the agent to (3, 0) which is a wall")
-    make_action(prolog, a_map, "moveforward", True, True)
+    make_action(prolog, a_map, "moveforward")
     print("The bump indicator should show and (3, 0) should update to be a wall")
 
     wumpus = list(prolog.query("wumpus(X, Y)"))
@@ -788,8 +788,8 @@ def printout_wumpus_stench_bump_current():
     print("Agent has arrow: ", len(arrow) > 0)
 
     print("Since we know the wumpus' location beforehand, let's shoot it")
-    make_action(prolog, a_map, "turnright", False, False)
-    make_action(prolog, a_map, "shoot", True, True)
+    make_action(prolog, a_map, "turnright")
+    make_action(prolog, a_map, "shoot")
     print("The wumpus should now be dead and all wumpus cells should be removed")
     print("And we check again if the agent has the arrow")
     arrow = list(prolog.query("hasarrow"))
@@ -811,19 +811,19 @@ def printout_reposition():
 
     print("===[Testing reposition/1]===")
     print("Moving agent to (0, 2) first")
-    make_action(prolog, a_map, "moveforward", False, False)
-    make_action(prolog, a_map, "moveforward", False, False)
-    make_action(prolog, a_map, "turnright", True, True)
+    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "turnright")
     print("If we take a portal from any direction, the absolute direction should stay the same")
     print("But the relative direction should reset to north")
     print("In this case, we teleport the agent to (1, 4) on the absolute map")
-    make_action(prolog, a_map, "moveforward", True, True, True)
+    make_action(prolog, a_map, "moveforward")
 
     print("Any movement we make should update accordingly")
     print("Let's move the agent to relative (-1, 1)")
-    make_action(prolog, a_map, "moveforward", False, False)
-    make_action(prolog, a_map, "turnleft", False, False)
-    make_action(prolog, a_map, "moveforward", True, True, True)
+    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "turnleft")
+    make_action(prolog, a_map, "moveforward")
     print("On the absolute map, the agent should move east then north")
     print("But on the relative map, north then west")
 
@@ -845,7 +845,7 @@ def printout_explore():
     print("\n")
 
     auto_explore(prolog, a_map)
-    make_action(prolog, a_map, "none", True, True, True)
+    make_action(prolog, a_map, "none")
     print("Agent should now be at relative (0, 0) and all possible safe cells are visited")
     print("All available coins should also have been picked up")
     print("All the 'border' cells should either be wumpus, confundus portals or walls")
