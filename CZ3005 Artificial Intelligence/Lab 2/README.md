@@ -1,3 +1,3 @@
 # CZ3005 Lab Assignment 2
 
-Please don't be a jackass like me and try to solo this. I spent more time on this than any other project so far it's not even funny.
+If you get this project and are using prolog for the first time, don't try to complete it in a group of 1 person

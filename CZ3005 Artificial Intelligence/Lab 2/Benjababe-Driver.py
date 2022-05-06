@@ -10,22 +10,18 @@ class Cell():
 
     def __init__(self) -> None:
         super().__init__()
-        self.known_wall: bool = False
-        self.elements: dict = {
+        self.perceptions: dict = {
             "glitter": "off",
             "wumpus": "off",
             "stench": "off",
-            "confounded": "off",
-            "portal": "off",
+            "confundus": "off",
             "tingle": "off",
-            "bump": "off",
-            "scream": "off",
             "wall": "off",
         }
         self.set_empty_cell()
         pass
 
-    def set_empty_cell(self, char=None):
+    def set_empty_cell(self):
         self.grid = [['.', '.', '.'], [' ', '?', ' '], ['.', '.', '.']]
 
     def clear_dynamic_perceptions(self):
@@ -37,7 +33,7 @@ class Cell():
 
     def set_wall(self):
         self.grid = [['#', '#', '#'], ['#', '#', '#'], ['#', '#', '#']]
-        self.elements["wall"] = "on"
+        self.perceptions["wall"] = "on"
 
     def set_percept_confounded(self):
         self.grid[0][0] = '%'
@@ -86,7 +82,6 @@ class Cell():
         self.grid[2][0] = '*'
 
     def set_percept_bump(self):
-        self.known_wall = True
         self.grid[2][1] = 'B'
 
     def clear_percept_bump(self):
@@ -97,7 +92,7 @@ class Cell():
 
     def pickup(self):
         self.grid[2][0] = '.'
-        self.elements["glitter"] = "off"
+        self.perceptions["glitter"] = "off"
 
     def get_line(self, i: int):
         return self.grid[i]
@@ -113,6 +108,7 @@ class Map():
     agent_angle_offset: int = 0
     bumped: bool
     scream: bool
+    confounded: bool
 
     cells: List[List[Cell]]
     wumpus_pos = List[int]
@@ -124,6 +120,7 @@ class Map():
         self.agent_abs_dir = dir
         self.bumped = False
         self.scream = False
+        self.confounded = False
 
         self.init_map()
 
@@ -132,6 +129,9 @@ class Map():
         self.draw_walls()
 
     def create_map(self):
+        """Populates grid of Map object with empty cells.
+        """
+
         self.cells = []
 
         for y in range(self.M):
@@ -143,6 +143,9 @@ class Map():
             self.cells.append(row)
 
     def draw_walls(self):
+        """Sets the outer cells of the absolute map to be walls.
+        """
+
         for row in range(self.M):
             for col in range(self.N):
                 if row == 0 or row == (self.M-1):
@@ -151,30 +154,38 @@ class Map():
                     self.cells[row][col].set_wall()
 
     def reset_map(self):
+        """Clears all non-wall cells on absolute map of NPCs or whatever.
+        """
+
         for row in range(self.M):
             for col in range(self.N):
                 cell = self.cells[row][col]
-                if cell.elements["wall"] != "on":
-                    cell.elements["confounded"] = "off"
+                if cell.perceptions["wall"] != "on":
                     cell.set_empty_cell()
 
     def reposition_agent(self, X: int, Y: int):
+        """Repositions agent on the absolute map.
+           Does NOT send the reposition/1 query to the agent.
+
+        Args:
+            X (int): New X coordinate of the agent.
+            Y (int): New Y coordinate of the agent.
+        """
+
         self.reset_map()
         self.rel_map_size = [3, 3]
         self.agent_start = [X, Y]
         self.agent_pos = [X, Y]
-        self.cells[Y][X].elements["confounded"] = "on"
+        self.confounded = True
 
         # angle offset is based on clockwise direction
         # so if currently facing east and enter a portal,
         # offset of relative to absolute direction is 90 degrees after repositioning
         dirs = ["rnorth", "reast", "rsouth", "rwest"]
-        self.agent_angle_offset += dirs.index(self.agent_abs_dir) * 90
-        self.agent_angle_offset %= 360
+        self.agent_angle_offset = dirs.index(self.agent_abs_dir) * 90
 
     def add_coin(self, X: int, Y: int):
-        cell = self.cells[Y][X]
-        cell.elements["glitter"] = "on"
+        self.set_cell_perception(X, Y, "glitter", "on")
 
     def add_wall(self, X: int, Y: int):
         cell = self.cells[Y][X]
@@ -182,30 +193,60 @@ class Map():
 
     def add_wumpus(self, X: int, Y: int):
         self.wumpus_pos = [X, Y]
-        cell = self.cells[Y][X]
-        cell.elements["wumpus"] = "on"
-        self.set_adjacent_element(X, Y, "stench")
+        self.set_cell_perception(X, Y, "wumpus", "on")
+        self.set_adjacent_perception(X, Y, "stench", "on")
+
+    def remove_wumpus(self):
+        X, Y = self.wumpus_pos
+        self.set_cell_perception(X, Y, "wumpus", "off")
+        self.set_adjacent_perception(X, Y, "stench", "off")
+        self.wumpus_pos = []
 
     def add_portal(self, X: int, Y: int):
         cell = self.cells[Y][X]
-        cell.elements["portal"] = "on"
-        self.set_adjacent_element(X, Y, "tingle")
+        self.set_cell_perception(X, Y, "confundus", "on")
+        self.set_adjacent_perception(X, Y, "tingle", "on")
 
     def clear_transient_indicators(self):
+        """Clears perceptions that should only show up temporarily
+        """
+
         self.bumped = False
         self.scream = False
+        self.confounded = False
 
-    def set_adjacent_element(self, X: int, Y: int, element):
-        self.cells[Y-1][X].elements[element] = "on"
-        self.cells[Y][X-1].elements[element] = "on"
-        self.cells[Y][X+1].elements[element] = "on"
-        self.cells[Y+1][X].elements[element] = "on"
-
-    def do_action(self, action: str):
-        """Updates map according to action generated
+    def set_cell_perception(self, X: int, Y: int, percept: str, status: str):
+        """Sets 4 adjacent cells with a non-transitory percept.
 
         Args:
-            action (str): Action the agent will take
+            X (int): X coordinate of cell.
+            Y (int): Y coordinate of cell.
+            percept (str): Percept to set to cell. eg. [wumpus, confundus, tingle]
+            status (str): Status to set to cell's perception. eg. [on, off].
+        """
+
+        self.cells[Y][X].perceptions[percept] = status
+
+    def set_adjacent_perception(self, X: int, Y: int, percept: str, status: str):
+        """Sets 4 adjacent cells with a non-transitory percept.
+
+        Args:
+            X (int): X coordinate of cell.
+            Y (int): Y coordinate of cell.
+            percept (str): Percept to set to adjacent cell. eg. [stench, tingle]
+            status (str): Status to set to adjacent cell's perception. eg. [on, off].
+        """
+
+        self.set_cell_perception(X, Y-1, percept, status)
+        self.set_cell_perception(X-1, Y, percept, status)
+        self.set_cell_perception(X+1, Y, percept, status)
+        self.set_cell_perception(X, Y+1, percept, status)
+
+    def do_action(self, action: str):
+        """Updates absolute map according to action generated.
+
+        Args:
+            action (str): Action the agent will take.
         """
 
         if action == "pickup":
@@ -224,6 +265,9 @@ class Map():
                 ay < wy and ax == wx and adir == "rsouth"
             )
 
+            if self.scream:
+                self.remove_wumpus()
+
         elif action == "moveforward":
             prev_pos = self.agent_pos.copy()
 
@@ -238,7 +282,7 @@ class Map():
 
             # checks for wall collision
             cell = self.cells[self.agent_pos[1]][self.agent_pos[0]]
-            if cell.elements["wall"] == "on":
+            if cell.perceptions["wall"] == "on":
                 self.agent_pos = prev_pos
                 self.bumped = True
                 cell = self.cells[self.agent_pos[1]][self.agent_pos[0]]
@@ -277,23 +321,29 @@ class Map():
                 self.agent_abs_dir = "rnorth"
 
     def check_portal(self) -> bool:
+        """Check if agent is currently standing on a confundus portal.
+
+        Returns:
+            bool: Whether the agent is standing on a confundus portal.
+        """
+
         cell = self.cells[self.agent_pos[1]][self.agent_pos[0]]
-        return cell.elements["portal"] == "on"
+        return cell.perceptions["confundus"] == "on"
 
     def get_cell_perceptions(self):
-        """Retrives current perceptions L of the agent
+        """Retrives current perceptions L of the agent.
         """
 
         cell = self.cells[self.agent_pos[1]][self.agent_pos[0]]
         perception = Perception()
 
-        if cell.elements["confounded"] == "on":
+        if self.confounded:
             perception.enable_perception(Perception.CONFOUNDED)
-        if cell.elements["stench"] == "on":
+        if cell.perceptions["stench"] == "on":
             perception.enable_perception(Perception.STENCH)
-        if cell.elements["tingle"] == "on":
+        if cell.perceptions["tingle"] == "on":
             perception.enable_perception(Perception.TINGLE)
-        if cell.elements["glitter"] == "on":
+        if cell.perceptions["glitter"] == "on":
             perception.enable_perception(Perception.GLITTER)
         if self.bumped:
             perception.enable_perception(Perception.BUMP)
@@ -302,14 +352,14 @@ class Map():
 
         return perception
 
-    def update_map_with_perceptions(self, prolog: Prolog, ref: List[int], abs_dir: bool):
-        """Adds to the map the current perceptions of the agent
+    def update_map_with_perceptions(self, prolog: Prolog, ref: List[int], is_abs: bool):
+        """Adds to the map the current perceptions of the agent.
 
         Args:
-            prolog (Prolog): The initialised prolog file of agent
-            ref (List[int]): Reference coordinate that the X and Y offsets are based off of
+            prolog (Prolog): The initialised prolog file of agent.
+            ref (List[int]): Reference coordinate that the X and Y offsets are based off of.
                              Eg (ref = [3, 3] means that a relative coordinate of (1, 3) is (4, 6) 
-                             if initial relative and absolute direction are the same)
+                             if initial relative and absolute direction are the same).
         """
 
         knawledge = Knawledge(prolog)
@@ -342,9 +392,10 @@ class Map():
                 cell = self.cells[Y][X]
 
                 # no need to update walls
-                if cell.elements["wall"] == "on":
+                if cell.perceptions["wall"] == "on":
                     continue
 
+                # update cells depending on perceptions from agent
                 if kb["type"] == Knawledge.VISITED:
                     cell.set_percept_visited()
                 elif kb["type"] == Knawledge.SAFE:
@@ -353,8 +404,6 @@ class Map():
                     cell.set_percept_wumpus()
                 elif kb["type"] == Knawledge.STENCH:
                     cell.set_percept_stench()
-                elif kb["type"] == Knawledge.CONFOUNDED:
-                    cell.set_percept_confounded()
                 elif kb["type"] == Knawledge.CONFUNDUS:
                     cell.set_percept_portal()
                 elif kb["type"] == Knawledge.TINGLE:
@@ -366,19 +415,27 @@ class Map():
                 elif kb["type"] == Knawledge.WALL:
                     cell.set_wall()
                 elif kb["type"] == Knawledge.AGENT:
-                    if abs_dir:
+                    # check if printing for absolute or relative map
+                    if is_abs:
                         cell.set_percept_agent(self.agent_abs_dir)
                     else:
                         cell.set_percept_agent(data["Dir"])
+
+                    # transitory perceptions only appear on the agent's cell
                     if self.bumped:
                         cell.set_percept_bump()
+                    if self.scream:
+                        cell.set_percept_scream()
+                    if self.confounded:
+                        cell.set_percept_confounded()
 
     def reset_absolute_map(self, full_clear: bool = False):
         """Clears all of the cell drawing back to an empty map
         """
+
         for row in self.cells:
             for cell in row:
-                if cell.elements["wall"] == "on":
+                if cell.perceptions["wall"] == "on":
                     cell.set_wall()
                 else:
                     if full_clear:
@@ -387,46 +444,59 @@ class Map():
                         cell.clear_dynamic_perceptions()
 
     def generate_relative_map(self, prolog: Prolog):
-        """Creates a relative map based on agent perceptions
+        """Creates a relative map based on agent perceptions.
 
         Args:
-            prolog (Prolog): The initialised prolog file of agentv
+            prolog (Prolog): The initialised prolog file of agent.
 
         Returns:
-            RelativeMap: The relative map with drawn cells
+            RelativeMap: The relative map with drawn cells.
         """
 
-        r_map = RelativeMap(*self.rel_map_size, self.bumped)
+        r_map = RelativeMap(*self.rel_map_size, self.bumped,
+                            self.scream, self.confounded)
         r_map.update_map_with_perceptions(prolog, r_map.center, False)
         return r_map
 
     def print_relative_map(self, prolog: Prolog):
+        """Prints relative map with agent's perceptions.
+
+        Args:
+            prolog (Prolog):  The initialised prolog file of agent.
+        """
+
         r_map = self.generate_relative_map(prolog)
         r_map.print_map()
 
     def print_absolute_map(self, prolog: Prolog):
+        """Prints absolute map with agent's perceptions.
+
+        Args:
+            prolog (Prolog): The initialised prolog file of agent.
+        """
+
         self.reset_absolute_map(full_clear=False)
         self.update_map_with_perceptions(prolog, self.agent_start, True)
         self.print_map()
 
     def update_map_with_data(self):
-        """Draws map with absolute data
+        """Draws map with absolute data.
         """
         for row in self.cells:
             for cell in row:
                 # don't update if it's a wall
-                if cell.elements["wall"] == "on":
+                if cell.perceptions["wall"] == "on":
                     continue
 
-                if cell.elements["wumpus"] == "on":
+                if cell.perceptions["wumpus"] == "on":
                     cell.set_percept_wumpus()
-                if cell.elements["stench"] == "on":
+                if cell.perceptions["stench"] == "on":
                     cell.set_percept_stench()
-                if cell.elements["portal"] == "on":
+                if cell.perceptions["confundus"] == "on":
                     cell.set_percept_portal()
-                if cell.elements["tingle"] == "on":
+                if cell.perceptions["tingle"] == "on":
                     cell.set_percept_tingle()
-                if cell.elements["glitter"] == "on":
+                if cell.perceptions["glitter"] == "on":
                     cell.set_percept_glitter()
 
     def draw_agent(self):
@@ -434,7 +504,7 @@ class Map():
         cell.set_percept_agent(self.agent_abs_dir)
 
     def print_init_map(self):
-        """Prints initial absolute map
+        """Prints initial absolute map.
         """
         self.reset_absolute_map(full_clear=True)
         self.update_map_with_data()
@@ -464,16 +534,21 @@ class Map():
 class RelativeMap(Map):
     center: List[int]
 
-    def __init__(self, N, M, bumped):
+    def __init__(self, N, M, bumped, scream, confounded):
         self.N = N
         self.M = M
         self.agent_angle_offset = 0
         self.center = [N//2, M//2]
         self.bumped = bumped
+        self.scream = scream
+        self.confounded = confounded
 
         self.create_map()
 
     def create_map(self):
+        """Populate the grid of RelativeMap object with all empty cells.
+        """
+
         self.cells = []
         for y in range(self.M):
             row = []
@@ -494,11 +569,16 @@ class Knawledge():
     STENCH = 6
     SAFE = 7
     U = 8
-    CONFOUNDED = 9
     WALL = 10
     BUMP = 11
 
     def __init__(self, prolog: Prolog):
+        """Makes all the queries to the agent about mapping and localisation needed for the relative map printout.
+
+        Args:
+            prolog (Prolog):  The initialised prolog file of agent.
+        """
+
         agent = {
             "data": list(prolog.query("current(X, Y, Dir)")),
             "type": self.AGENT
@@ -529,11 +609,6 @@ class Knawledge():
             "type": self.GLITTER
         }
 
-        confounded = {
-            "data": list(prolog.query("confounded(X, Y)")),
-            "type": self.CONFOUNDED
-        }
-
         stench = {
             "data": list(prolog.query("stench(X, Y)")),
             "type": self.STENCH
@@ -555,7 +630,7 @@ class Knawledge():
         }
 
         self.kb = [
-            wumpus, confundus, u, tingle, glitter, confounded,
+            wumpus, confundus, u, tingle, glitter,
             stench, safe, visited, wall, agent
         ]
 
@@ -589,13 +664,33 @@ class Perception():
         self.sense_printout[type] = self.short_printout[type]
 
     def get_query_str(self) -> str:
+        """Gets the list of perceptions to pass into action/2.
+
+        Returns:
+            str: List of perceptions. eg. "on, off, off, on, off, off".
+        """
         return ",".join(self.query_list)
 
     def get_sense_printout(self) -> str:
+        """Gets the list of perceptions to be printed with map.
+
+        Returns:
+            str: List of perceptions. eg. "Confounded-S-T-Glitter-B-S".
+        """
         return "-".join(self.sense_printout)
 
 
 def setup_map(N: int, M: int) -> Map:
+    """Creates a predetermined map for the world.
+
+    Args:
+        N (int): Width of the map.
+        M (int): Height of the map.
+
+    Returns:
+        Map: Instantiated Map object with all NPCs and coins added.
+    """
+
     a_map = Map(N, M, "rnorth")
     a_map.reposition_agent(3, 3)
 
@@ -612,6 +707,16 @@ def setup_map(N: int, M: int) -> Map:
 
 
 def setup_prolog(filename: str, a_map: Map) -> Prolog:
+    """Initialises the prolog agent and repositions it to relative (0, 0) with confounded on.
+
+    Args:
+        filename (str): Filename of the prolog agent file.
+        a_map (Map): The current absolute map.
+
+    Returns:
+        Prolog: The initialised prolog file of agent.
+    """
+
     # initialise prolog file
     prolog = Prolog()
     prolog.consult(filename)
@@ -624,8 +729,19 @@ def setup_prolog(filename: str, a_map: Map) -> Prolog:
     return prolog
 
 
-def make_action(prolog: Prolog, a_map: Map, action: str = None,
-                print_map: bool = True, print_rel: bool = False, print_abs: bool = False):
+def make_action(prolog: Prolog, a_map: Map, action: str, print_map: bool = True,
+                print_rel: bool = False, print_abs: bool = False):
+    """Simulates an action on the absolute map then applies it to the agent, passing the new perceptions with it.
+
+    Args:
+        prolog (Prolog): The initialised prolog file of agent.
+        a_map (Map): The current absolute map.
+        action (str): Action for the agent to take. Consists of [shoot,moveforward,turnleft,turnright,pickup].
+        print_map (bool, optional): Whether to print the map at all. Defaults to True.
+        print_rel (bool, optional): Whether to print the relative map. Defaults to False.
+        print_abs (bool, optional): Whether to print the absolute map. Defaults to False.
+    """
+
     # preemptively clears bumps to prevent old bumps from showing
     a_map.clear_transient_indicators()
 
@@ -636,7 +752,7 @@ def make_action(prolog: Prolog, a_map: Map, action: str = None,
     perceptions = a_map.get_cell_perceptions()
 
     # update agent with new perceptions
-    query_str = f"action({action}, [{perceptions.get_query_str()}])"
+    query_str = f"move({action}, [{perceptions.get_query_str()}])"
     print(query_str)
     list(prolog.query(query_str))
 
@@ -656,8 +772,14 @@ def make_action(prolog: Prolog, a_map: Map, action: str = None,
             a_map.print_relative_map(prolog)
 
 
-# continues using explore/1 until no safe cells are left
 def auto_explore(prolog: Prolog, a_map: Map):
+    """Continues calling explore/1 until stopping condition is met.
+
+    Args:
+        prolog (Prolog): The initialised prolog file of agent.
+        a_map (Map): The current absolute map.
+    """
+
     path_exists = True
 
     # keep calling explore/1 until there isn't anymore valid paths for it
@@ -672,6 +794,17 @@ def auto_explore(prolog: Prolog, a_map: Map):
 
 
 def handle_explore_result(prolog: Prolog, a_map: Map, L: List[Dict[str, List[Atom]]]) -> bool:
+    """Handles the result of L from calling explore/1.
+
+    Args:
+        prolog (Prolog): The initialised prolog file of agent.
+        a_map (Map): The current absolute map.
+        L (List[Dict[str, List[Atom]]]): The resultant L value from the agent.
+
+    Returns:
+        bool: Whether to continue calling explore/1 or not.
+    """
+
     if len(L) == 0:
         return False
 
@@ -679,32 +812,34 @@ def handle_explore_result(prolog: Prolog, a_map: Map, L: List[Dict[str, List[Ato
     actions = L[0]['L']
     for action in actions[:-1]:
         make_action(prolog, a_map, action)
-    make_action(prolog, a_map, actions[-1])
+    make_action(prolog, a_map, actions[-1], True, True)
 
     return True
 
 
+# unlike the name, I'm testing glitter, safe, visited and pickup
 def printout_glitter_visited_safe():
     a_map = setup_map(7, 6)
-    prolog = setup_prolog("agent.pl", a_map)
+    prolog = setup_prolog("Benjababe-Agent.pl", a_map)
 
     print("===[Complete Absolute Map]===")
     a_map.print_init_map()
+    a_map.print_relative_map(prolog)
 
     print("===[Testing glitter/2, safe/2, visited/2 and pickup]===")
     print("Moving agent to (0, 1) first")
-    make_action(prolog, a_map, "moveforward", )
+    make_action(prolog, a_map, "moveforward", True, True)
     print("Agent now picks up the coin")
-    make_action(prolog, a_map, "pickup", )
+    make_action(prolog, a_map, "pickup", True, True)
     print("The glitter indicator on (0, 1) should now be gone")
     print("Now moving agent to (-1, 0), only printing relative map for last action")
-    make_action(prolog, a_map, "turnright")
-    make_action(prolog, a_map, "turnright")
-    make_action(prolog, a_map, "moveforward")
-    make_action(prolog, a_map, "turnright")
-    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "turnright", False, False)
+    make_action(prolog, a_map, "turnright", False, False)
+    make_action(prolog, a_map, "moveforward", False, False)
+    make_action(prolog, a_map, "turnright", False, False)
+    make_action(prolog, a_map, "moveforward", True, True)
     print("Agent now picks up the second coin")
-    make_action(prolog, a_map, "pickup")
+    make_action(prolog, a_map, "pickup", True, True)
     print("The glitter indicator on (-1, 0) should now be gone")
 
     safe = list(prolog.query("safe(X, Y)"))
@@ -719,6 +854,7 @@ def printout_glitter_visited_safe():
     print("\n")
 
 
+# yes the name is correct
 def printout_confundus_tingle():
     a_map = setup_map(7, 6)
     prolog = setup_prolog("agent.pl", a_map)
@@ -728,17 +864,17 @@ def printout_confundus_tingle():
 
     print("===[Testing confundus/2 and tingle/2]===")
     print("Moving agent to (-1, 1) first")
-    make_action(prolog, a_map, "turnleft")
-    make_action(prolog, a_map, "moveforward")
-    make_action(prolog, a_map, "turnright")
-    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "turnleft", False, False)
+    make_action(prolog, a_map, "moveforward", False, False)
+    make_action(prolog, a_map, "turnright", False, False)
+    make_action(prolog, a_map, "moveforward", True, True)
     print("Tingle indicator should show and portals should surround the player")
     print("But cells that are safe or visited should not be portals")
     print("Now moving agent to (0, -2)")
-    make_action(prolog, a_map, "turnright")
-    make_action(prolog, a_map, "moveforward")
-    make_action(prolog, a_map, "turnleft")
-    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "turnright", False, False)
+    make_action(prolog, a_map, "moveforward", False, False)
+    make_action(prolog, a_map, "turnleft", False, False)
+    make_action(prolog, a_map, "moveforward", True, True)
 
     confundus = list(prolog.query("confundus(X, Y)"))
     tingle = list(prolog.query("tingle(X, Y)"))
@@ -752,6 +888,8 @@ def printout_confundus_tingle():
     print("\n")
 
 
+# name is wrong
+# testing wumpus, stench, wall, bump, scream and shoot
 def printout_wumpus_stench_bump_current():
     a_map = setup_map(7, 6)
     prolog = setup_prolog("agent.pl", a_map)
@@ -761,13 +899,13 @@ def printout_wumpus_stench_bump_current():
 
     print("===[Testing wumpus/2, stench/2, wall/2, bump, scream and shoot]===")
     print("Now moving agent to (2, 0)")
-    make_action(prolog, a_map, "turnright")
-    make_action(prolog, a_map, "moveforward")
-    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "turnright", False, False)
+    make_action(prolog, a_map, "moveforward", False, False)
+    make_action(prolog, a_map, "moveforward", True, True)
     print("Stench indicator should show and wumpus should surround the player")
     print("But cells that are safe or visited should not be wumpuses (wumpi?)")
     print("Now we move the agent to (3, 0) which is a wall")
-    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "moveforward", True, True)
     print("The bump indicator should show and (3, 0) should update to be a wall")
 
     wumpus = list(prolog.query("wumpus(X, Y)"))
@@ -788,8 +926,8 @@ def printout_wumpus_stench_bump_current():
     print("Agent has arrow: ", len(arrow) > 0)
 
     print("Since we know the wumpus' location beforehand, let's shoot it")
-    make_action(prolog, a_map, "turnright")
-    make_action(prolog, a_map, "shoot")
+    make_action(prolog, a_map, "turnright", False, False)
+    make_action(prolog, a_map, "shoot", True, True)
     print("The wumpus should now be dead and all wumpus cells should be removed")
     print("And we check again if the agent has the arrow")
     arrow = list(prolog.query("hasarrow"))
@@ -802,6 +940,7 @@ def printout_wumpus_stench_bump_current():
     print("\n")
 
 
+# just reposition
 def printout_reposition():
     a_map = setup_map(7, 6)
     prolog = setup_prolog("agent.pl", a_map)
@@ -811,26 +950,27 @@ def printout_reposition():
 
     print("===[Testing reposition/1]===")
     print("Moving agent to (0, 2) first")
-    make_action(prolog, a_map, "moveforward")
-    make_action(prolog, a_map, "moveforward")
-    make_action(prolog, a_map, "turnright")
+    make_action(prolog, a_map, "moveforward", False, False)
+    make_action(prolog, a_map, "moveforward", False, False)
+    make_action(prolog, a_map, "turnright", True, True)
     print("If we take a portal from any direction, the absolute direction should stay the same")
     print("But the relative direction should reset to north")
     print("In this case, we teleport the agent to (1, 4) on the absolute map")
-    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "moveforward", True, True, True)
 
     print("Any movement we make should update accordingly")
     print("Let's move the agent to relative (-1, 1)")
-    make_action(prolog, a_map, "moveforward")
-    make_action(prolog, a_map, "turnleft")
-    make_action(prolog, a_map, "moveforward")
+    make_action(prolog, a_map, "moveforward", False, False)
+    make_action(prolog, a_map, "turnleft", False, False)
+    make_action(prolog, a_map, "moveforward", True, True, True)
     print("On the absolute map, the agent should move east then north")
     print("But on the relative map, north then west")
 
     print("\n")
 
 
-def printout_explore():
+# tests explore and reset, prints a ton of relative maps
+def printout_explore_reset():
     a_map = setup_map(7, 6)
     prolog = setup_prolog("agent.pl", a_map)
 
@@ -845,27 +985,39 @@ def printout_explore():
     print("\n")
 
     auto_explore(prolog, a_map)
-    make_action(prolog, a_map, "none")
+    make_action(prolog, a_map, "none", True, True, True)
     print("Agent should now be at relative (0, 0) and all possible safe cells are visited")
     print("All available coins should also have been picked up")
     print("All the 'border' cells should either be wumpus, confundus portals or walls")
+    print("\n")
+
+    print("===[Testing reset]===")
+    print("Agent will now run the end-game reset by calling reborn/0 then reposition/1")
+    a_map = setup_map(7, 6)
+    list(prolog.query("reborn"))
+    perceptions = a_map.get_cell_perceptions()
+    list(prolog.query(f"reposition([{perceptions.get_query_str()}])"))
+    a_map.print_absolute_map(prolog)
+    a_map.print_relative_map(prolog)
+    print("The absolute and relative map printouts should be empty except for the 4 adjacent cells being safe")
 
     print("\n")
 
 
 # tests correctness of agent's localisation, mapping and sensory inference
-def printout_loc_map_sensory():
+def printout_tests():
     printout_glitter_visited_safe()
     printout_confundus_tingle()
     printout_wumpus_stench_bump_current()
     printout_reposition()
-    printout_explore()
+    printout_explore_reset()
 
 
 def main():
+    # all stdout streams to be written into the textfile instead of the console
     filename = "Benjababe-testPrintout-Self-Self.txt"
     sys.stdout = open(file=filename, mode="w+", encoding="utf8")
-    printout_loc_map_sensory()
+    printout_tests()
 
 
 if __name__ == "__main__":
