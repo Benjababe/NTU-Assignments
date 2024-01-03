@@ -1,0 +1,4 @@
+#!/bin/bash
+echo "Content-type: text/html"
+echo
+echo "hello", $HTTP_USER_AGENT
