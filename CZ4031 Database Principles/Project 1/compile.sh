@@ -1,0 +1,1 @@
+g++ -g -I./include -o cz4031_project_1 ./src/*.cpp

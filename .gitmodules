@@ -1,3 +1,9 @@
 [submodule "CZ4052 Cloud Computing/Project"]
 	path = CZ4052 Cloud Computing/Project
 	url = https://github.com/Benjababe/Etcetera-Map
+[submodule "CZ4031 Database Principles/CZ4031-Database-Principles"]
+	path = CZ4031 Database Principles/CZ4031-Database-Principles
+	url = https://github.com/Benjababe/CZ4031-Database-Principles
+[submodule "CZ4031-Database-Principles"]
+	path = CZ4031-Database-Principles
+	url = https://github.com/Benjababe/CZ4031-Database-Principles
